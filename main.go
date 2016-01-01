@@ -18,16 +18,6 @@ func main() {
 		conns = append(conns, conn)
 	}
 
-	go func() {
-		for {
-			time.Sleep(time.Minute)
-
-			for _, conn := range conns {
-				conn.Ping()
-			}
-		}
-	}()
-
 	ch := make(chan string)
 
 	for _, conn := range conns {
