@@ -53,12 +53,13 @@ type User struct {
 
 // Event is a JSON object that represents a event.
 type Event struct {
-	ID      string `json:"id"`
-	UserID  string `json:"user"`
-	Type    string `json:"type"`
-	Subtype string `json:"subtype"`
-	Text    string `json:"text"`
-	Ts      string `json:"ts"`
+	ID        string `json:"id"`
+	ChannelID string `json:"channel"`
+	UserID    string `json:"user"`
+	Type      string `json:"type"`
+	Subtype   string `json:"subtype"`
+	Text      string `json:"text"`
+	Ts        string `json:"ts"`
 }
 
 // GetRTMInfo returns RTMInfo
@@ -100,5 +101,28 @@ func main() {
 		log.Fatalln("Could not establish WebSocket connection:", err)
 	}
 
-	log.Println(ws)
+	for {
+		var event Event
+		err := websocket.JSON.Receive(ws, &event)
+		if err != nil {
+			log.Println("Failed to parse JSON:", err)
+			continue
+		}
+
+		userName := "unknown"
+		for _, user := range info.Users {
+			if user.ID == event.UserID {
+				userName = user.Name
+			}
+		}
+
+		channelName := "unknown"
+		for _, channel := range info.Channels {
+			if channel.ID == event.ChannelID {
+				channelName = channel.Name
+			}
+		}
+
+		log.Printf("[%s:%s] %s", channelName, userName, event.Text)
+	}
 }
