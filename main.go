@@ -7,15 +7,36 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 
 	"golang.org/x/net/websocket"
 )
 
 // RTMInfo represents a root JSON response of GET /api/rtm.start.
 type RTMInfo struct {
-	URL      string    `json:"url"`
+	RawURL   string    `json:"url"`
 	Channels []Channel `json:"channels"`
 	Users    []User    `json:"users"`
+}
+
+// URL returns url.URL from RTMInfo.RawURL.
+func (info *RTMInfo) URL() (*url.URL, error) {
+	URL, err := url.Parse(info.RawURL)
+	if err != nil {
+		return nil, err
+	}
+
+	comps := strings.Split(URL.Host, ":")
+	if err != nil {
+		return nil, err
+	}
+
+	// Append port if it is missing because net/websocket needs port for wss.
+	if len(comps) == 1 {
+		URL.Host += ":443"
+	}
+
+	return URL, nil
 }
 
 // Channel is a JSON object that represents a channel.
@@ -66,12 +87,17 @@ func GetRTMInfo() (*RTMInfo, error) {
 func main() {
 	info, err := GetRTMInfo()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalln("Could not get RTM info:", err)
 	}
 
-	ws, err := websocket.Dial(info.URL, "", "https://slack.com/")
+	URL, err := info.URL()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalln("Invalid WebSocket URL:", err)
+	}
+
+	ws, err := websocket.Dial(URL.String(), "", "https://slack.com/")
+	if err != nil {
+		log.Fatalln("Could not establish WebSocket connection:", err)
 	}
 
 	log.Println(ws)
