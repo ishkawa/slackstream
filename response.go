@@ -1,9 +1,6 @@
 package main
 
-import (
-	"net/url"
-	"strings"
-)
+import "net/url"
 
 // Channel is a JSON object that represents a channel.
 type Channel struct {
@@ -48,16 +45,6 @@ func (info *RTMInfo) URL() (*url.URL, error) {
 	URL, err := url.Parse(info.RawURL)
 	if err != nil {
 		return nil, err
-	}
-
-	comps := strings.Split(URL.Host, ":")
-	if err != nil {
-		return nil, err
-	}
-
-	// Append port if it is missing because net/websocket needs port for wss.
-	if len(comps) == 1 {
-		URL.Host += ":443"
 	}
 
 	return URL, nil
