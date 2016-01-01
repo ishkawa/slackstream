@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 
 	"golang.org/x/net/websocket"
 )
@@ -62,8 +61,17 @@ func (conn *RTMConn) ReceiveMsg() (string, error) {
 
 // OpenRTMConn returns new RTMConn.
 // This method fetches RTM info and open new WebSocket connection.
-func OpenRTMConn() (*RTMConn, error) {
-	info, err := FetchRTMInfo()
+// https://api.slack.com/methods/rtm.start
+func OpenRTMConn(token string) (*RTMConn, error) {
+	resp, err := http.PostForm("https://slack.com/api/rtm.start", url.Values{"token": {token}})
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var info RTMInfo
+	decoder := json.NewDecoder(resp.Body)
+	err = decoder.Decode(&info)
 	if err != nil {
 		return nil, err
 	}
@@ -79,33 +87,9 @@ func OpenRTMConn() (*RTMConn, error) {
 	}
 
 	conn := &RTMConn{
-		Info: info,
+		Info: &info,
 		Ws:   ws,
 	}
 
 	return conn, nil
-}
-
-// FetchRTMInfo fetches RTM info from Slack server.
-// https://api.slack.com/methods/rtm.start
-func FetchRTMInfo() (*RTMInfo, error) {
-	token := os.Getenv("TOKEN")
-	if token == "" {
-		return nil, errors.New("TOKEN is not found in environment varables")
-	}
-
-	resp, err := http.PostForm("https://slack.com/api/rtm.start", url.Values{"token": {token}})
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	var info RTMInfo
-	decoder := json.NewDecoder(resp.Body)
-	err = decoder.Decode(&info)
-	if err != nil {
-		return nil, err
-	}
-
-	return &info, nil
 }
