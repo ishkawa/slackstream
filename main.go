@@ -3,27 +3,19 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
+
+	"golang.org/x/net/websocket"
 )
 
 // RTMInfo represents a root JSON response of GET /api/rtm.start.
 type RTMInfo struct {
-	RawURL   string    `json:"url"`
+	URL      string    `json:"url"`
 	Channels []Channel `json:"channels"`
 	Users    []User    `json:"users"`
-}
-
-// URL returns url.URL from RTMInfo.RawURL
-func (info *RTMInfo) URL() (*url.URL, error) {
-	URL, err := url.Parse(info.RawURL)
-	if err != nil {
-		return nil, err
-	}
-	return URL, nil
 }
 
 // Channel is a JSON object that represents a channel.
@@ -48,36 +40,22 @@ type Event struct {
 	Ts      string `json:"ts"`
 }
 
-// StartRTM returns RTMInfo
-func StartRTM() (*RTMInfo, error) {
-	req, err := http.NewRequest("GET", "https://slack.com/api/rtm.start", nil)
-	if err != nil {
-		return nil, err
-	}
-
+// GetRTMInfo returns RTMInfo
+func GetRTMInfo() (*RTMInfo, error) {
 	token := os.Getenv("TOKEN")
 	if token == "" {
 		return nil, errors.New("TOKEN is not found in environment varables")
 	}
 
-	query := url.Values{}
-	query.Add("token", token)
-	req.URL.RawQuery = query.Encode()
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := http.PostForm("https://slack.com/api/rtm.start", url.Values{"token": {token}})
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	bytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
 	var info RTMInfo
-	err = json.Unmarshal(bytes, &info)
+	decoder := json.NewDecoder(resp.Body)
+	err = decoder.Decode(&info)
 	if err != nil {
 		return nil, err
 	}
@@ -86,10 +64,15 @@ func StartRTM() (*RTMInfo, error) {
 }
 
 func main() {
-	info, err := StartRTM()
+	info, err := GetRTMInfo()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	log.Println(info)
+	ws, err := websocket.Dial(info.URL, "", "https://slack.com/")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Println(ws)
 }
