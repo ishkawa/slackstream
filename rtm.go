@@ -54,7 +54,7 @@ func (conn *RTMConn) ReceiveMsg() (string, error) {
 		return "", errors.New("Unknown channel " + event.ChannelID)
 	}
 
-	message := fmt.Sprintf("[%s:%s] %s", channelName, userName, event.Text)
+	message := fmt.Sprintf("[%s:%s:%s] %s", conn.Info.Team.Domain, channelName, userName, event.Text)
 
 	return message, nil
 }

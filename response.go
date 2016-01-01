@@ -28,9 +28,17 @@ type Event struct {
 	Ts        string `json:"ts"`
 }
 
+// Team is a JSON object that represents a team.
+type Team struct {
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Domain string `json:"domain"`
+}
+
 // RTMInfo represents a root JSON response of GET /api/rtm.start.
 type RTMInfo struct {
 	RawURL   string    `json:"url"`
+	Team     Team      `json:"team"`
 	Channels []Channel `json:"channels"`
 	Users    []User    `json:"users"`
 }
