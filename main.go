@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"time"
 
 	"golang.org/x/net/websocket"
 )
@@ -49,6 +50,16 @@ func main() {
 	if err != nil {
 		log.Fatalln("Could not establish WebSocket connection:", err)
 	}
+
+	go func() {
+		for {
+			time.Sleep(time.Minute)
+			websocket.JSON.Send(ws, map[string]interface{}{
+				"id":   1234,
+				"type": "ping",
+			})
+		}
+	}()
 
 	for {
 		var event Event
