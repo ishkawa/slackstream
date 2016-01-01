@@ -69,20 +69,22 @@ func main() {
 			continue
 		}
 
-		userName := "unknown"
+		userName := ""
 		for _, user := range info.Users {
 			if user.ID == event.UserID {
 				userName = user.Name
 			}
 		}
 
-		channelName := "unknown"
+		channelName := ""
 		for _, channel := range info.Channels {
 			if channel.ID == event.ChannelID {
 				channelName = channel.Name
 			}
 		}
 
-		log.Printf("[%s:%s] %s", channelName, userName, event.Text)
+		if userName != "" && channelName != "" {
+			log.Printf("[%s:%s] %s", channelName, userName, event.Text)
+		}
 	}
 }
