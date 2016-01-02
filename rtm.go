@@ -62,7 +62,7 @@ func (conn *RTMConn) Run(msgs chan *Message) {
 	for {
 		select {
 		case <-timer:
-			id += 1
+			id++
 			conn.Ping(id)
 
 		case event := <-events:
