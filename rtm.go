@@ -2,10 +2,10 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
+	"log"
 	"net/http"
 	"net/url"
+	"time"
 
 	"golang.org/x/net/websocket"
 )
@@ -16,53 +16,10 @@ type RTMConn struct {
 	Ws   *websocket.Conn
 }
 
-// Ping sends ping signal to websocket.Conn.
-func (conn *RTMConn) Ping() {
-	websocket.JSON.Send(conn.Ws, map[string]interface{}{
-		"id":   1234,
-		"type": "ping",
-	})
-}
-
-// ReceiveMsg waits WebSocket chunk and returns formatted message.
-func (conn *RTMConn) ReceiveMsg() (string, error) {
-	var event Event
-	err := websocket.JSON.Receive(conn.Ws, &event)
-	if err != nil {
-		return "", err
-	}
-
-	userName := ""
-	for _, user := range conn.Info.Users {
-		if user.ID == event.UserID {
-			userName = user.Name
-		}
-	}
-
-	channelName := ""
-	for _, channel := range conn.Info.Channels {
-		if channel.ID == event.ChannelID {
-			channelName = channel.Name
-		}
-	}
-
-	if userName == "" {
-		return "", errors.New("Unknown user " + event.UserID)
-	}
-
-	if channelName == "" {
-		return "", errors.New("Unknown channel " + event.ChannelID)
-	}
-
-	message := fmt.Sprintf("[%s:%s:%s] %s", conn.Info.Team.Domain, channelName, userName, event.Text)
-
-	return message, nil
-}
-
-// OpenRTMConn returns new RTMConn.
+// NewRTMConn returns new RTMConn.
 // This method fetches RTM info and open new WebSocket connection.
 // https://api.slack.com/methods/rtm.start
-func OpenRTMConn(token string) (*RTMConn, error) {
+func NewRTMConn(token string) (*RTMConn, error) {
 	resp, err := http.PostForm("https://slack.com/api/rtm.start", url.Values{"token": {token}})
 	if err != nil {
 		return nil, err
@@ -92,4 +49,58 @@ func OpenRTMConn(token string) (*RTMConn, error) {
 	}
 
 	return conn, nil
+}
+
+// Run starts handling events and queue messages into the passed channel.
+func (conn *RTMConn) Run(msgs chan *Message) {
+	timer := make(chan bool)
+	go startTimer(timer)
+
+	events := make(chan Event)
+	go pipeEvent(conn.Ws, events)
+
+	for {
+		select {
+		case <-timer:
+			conn.Ping()
+			log.Println("ping")
+
+		case event := <-events:
+			msg, err := NewMessage(conn.Info, &event)
+			if err != nil {
+				// TODO: Log erros
+				continue
+			}
+
+			msgs <- msg
+		}
+	}
+}
+
+// Ping sends ping signal to websocket.Conn.
+func (conn *RTMConn) Ping() {
+	websocket.JSON.Send(conn.Ws, map[string]interface{}{
+		"id":   1234,
+		"type": "ping",
+	})
+}
+
+func pipeEvent(ws *websocket.Conn, events chan Event) {
+	for {
+		var event Event
+		err := websocket.JSON.Receive(ws, &event)
+		if err != nil {
+			// TODO: Handle error
+			continue
+		}
+
+		events <- event
+	}
+}
+
+func startTimer(timer chan bool) {
+	for {
+		time.Sleep(time.Minute)
+		timer <- true
+	}
 }

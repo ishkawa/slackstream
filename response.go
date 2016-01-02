@@ -1,6 +1,10 @@
 package main
 
-import "net/url"
+import (
+	"errors"
+	"fmt"
+	"net/url"
+)
 
 // Channel is a JSON object that represents a channel.
 type Channel struct {
@@ -48,4 +52,44 @@ func (info *RTMInfo) URL() (*url.URL, error) {
 	}
 
 	return URL, nil
+}
+
+// Message represents a message in RTM.
+type Message struct {
+	Team    *Team
+	Event   *Event
+	User    *User
+	Channel *Channel
+}
+
+// NewMessage creates new instance of Message.
+func NewMessage(info *RTMInfo, event *Event) (*Message, error) {
+	msg := &Message{Team: &info.Team, Event: event}
+
+	for _, user := range info.Users {
+		if user.ID == event.UserID {
+			msg.User = &user
+		}
+	}
+
+	for _, channel := range info.Channels {
+		if channel.ID == event.ChannelID {
+			msg.Channel = &channel
+		}
+	}
+
+	if msg.User == nil {
+		return nil, errors.New("Unknown user " + event.UserID)
+	}
+
+	if msg.Channel == nil {
+		return nil, errors.New("Unknown channel " + event.ChannelID)
+	}
+
+	return msg, nil
+}
+
+// Text returns formatted text to display.
+func (msg Message) Text() string {
+	return fmt.Sprintf("[%s:%s:%s] %s", msg.Team.Domain, msg.Channel.Name, msg.Channel.Name, msg.Event.Text)
 }
