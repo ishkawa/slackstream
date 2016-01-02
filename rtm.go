@@ -52,6 +52,7 @@ func NewRTMConn(token string) (*RTMConn, error) {
 
 // Run starts handling events and queue messages into the passed channel.
 func (conn *RTMConn) Run(msgs chan *Message) {
+	id := 1
 	timer := make(chan bool)
 	go startTimer(timer)
 
@@ -61,7 +62,8 @@ func (conn *RTMConn) Run(msgs chan *Message) {
 	for {
 		select {
 		case <-timer:
-			conn.Ping()
+			id += 1
+			conn.Ping(id)
 
 		case event := <-events:
 			msg, err := NewMessage(conn.Info, &event)
@@ -76,9 +78,9 @@ func (conn *RTMConn) Run(msgs chan *Message) {
 }
 
 // Ping sends ping signal to websocket.Conn.
-func (conn *RTMConn) Ping() {
+func (conn *RTMConn) Ping(id int) {
 	websocket.JSON.Send(conn.Ws, map[string]interface{}{
-		"id":   1234,
+		"id":   id,
 		"type": "ping",
 	})
 }
