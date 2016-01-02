@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"net/url"
 	"time"
@@ -63,7 +62,6 @@ func (conn *RTMConn) Run(msgs chan *Message) {
 		select {
 		case <-timer:
 			conn.Ping()
-			log.Println("ping")
 
 		case event := <-events:
 			msg, err := NewMessage(conn.Info, &event)
