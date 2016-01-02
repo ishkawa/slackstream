@@ -62,6 +62,7 @@ func (conn *RTMConn) Run(msgs chan *Message) {
 	for {
 		select {
 		case <-timer:
+			// id must be unique for a connection.
 			id++
 			conn.Ping(id)
 
