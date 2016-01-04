@@ -69,12 +69,14 @@ func NewMessage(info *RTMInfo, event *Event) (*Message, error) {
 	for _, user := range info.Users {
 		if user.ID == event.UserID {
 			msg.User = &user
+			break
 		}
 	}
 
 	for _, channel := range info.Channels {
 		if channel.ID == event.ChannelID {
 			msg.Channel = &channel
+			break
 		}
 	}
 
@@ -90,6 +92,6 @@ func NewMessage(info *RTMInfo, event *Event) (*Message, error) {
 }
 
 // Text returns formatted text to display.
-func (msg Message) Text() string {
-	return fmt.Sprintf("[%s:%s:%s] %s", msg.Team.Domain, msg.Channel.Name, msg.Channel.Name, msg.Event.Text)
+func (msg *Message) Text() string {
+	return fmt.Sprintf("[%s:%s:%s] %s", msg.Team.Domain, msg.Channel.Name, msg.User.Name, msg.Event.Text)
 }
