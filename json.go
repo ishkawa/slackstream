@@ -88,6 +88,10 @@ func NewMessage(info *RTMInfo, event *Event) (*Message, error) {
 		return nil, errors.New("Unknown channel " + event.ChannelID)
 	}
 
+	if len(msg.Event.Text) == 0 {
+		return nil, errors.New("msg.Event.Text is empty")
+	}
+
 	return msg, nil
 }
 
