@@ -32,22 +32,33 @@ func NewRTMConn(token string) (*RTMConn, error) {
 		return nil, err
 	}
 
-	URL, err := info.URL()
+	conn := &RTMConn{
+		Info: &info,
+	}
+
+	err = conn.Dial()
 	if err != nil {
 		return nil, err
+	}
+
+	return conn, nil
+}
+
+// Dial establishes WebSocket connection and retain the connection as its property.
+func (conn *RTMConn) Dial() error {
+	URL, err := conn.Info.URL()
+	if err != nil {
+		return err
 	}
 
 	ws, err := websocket.Dial(URL.String(), "", "https://slack.com/")
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	conn := &RTMConn{
-		Info: &info,
-		Ws:   ws,
-	}
+	conn.Ws = ws
 
-	return conn, nil
+	return nil
 }
 
 // Run starts handling events and queue messages into the passed channel.
@@ -57,7 +68,8 @@ func (conn *RTMConn) Run(msgs chan *Message) {
 	go startTimer(timer)
 
 	events := make(chan Event)
-	go pipeEvent(conn.Ws, events)
+	errch := make(chan error)
+	go pipeEvent(conn.Ws, events, errch)
 
 	for {
 		select {
@@ -74,6 +86,11 @@ func (conn *RTMConn) Run(msgs chan *Message) {
 			}
 
 			msgs <- msg
+
+		case _ = <-errch:
+			for conn.Dial() != nil {
+				time.Sleep(10 * time.Second)
+			}
 		}
 	}
 }
@@ -86,13 +103,13 @@ func (conn *RTMConn) Ping(id int) {
 	})
 }
 
-func pipeEvent(ws *websocket.Conn, events chan Event) {
+func pipeEvent(ws *websocket.Conn, events chan Event, errch chan error) {
 	for {
 		var event Event
 		err := websocket.JSON.Receive(ws, &event)
 		if err != nil {
-			// TODO: Handle error
-			continue
+			<-errch
+			break
 		}
 
 		events <- event
